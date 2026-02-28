@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Sandstorm">
+    <link rel="manifest" href="manifest.json">
+    <title>SandstormApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .notice {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 24px 32px 0;
+            padding-top: calc(24px + env(safe-area-inset-top));
+        }
+
+        .center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 36px;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        #btn {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            border: none;
+            background: radial-gradient(circle at center, #ff2a10 0%, #8b0000 100%);
+            box-shadow: 0 0 40px rgba(255, 40, 10, 0.45);
+            color: #fff;
+            font-size: 26px;
+            font-weight: 900;
+            font-family: inherit;
+            letter-spacing: 1px;
+            line-height: 1.25;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        #btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 64px rgba(255, 40, 10, 0.7);
+        }
+
+        #status {
+            font-size: 17px;
+            font-weight: 600;
+            color: #ff9500;
+            height: 28px;
+            opacity: 0;
+            transform: scale(0.85);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        #status.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body>
+
+    <p class="notice">Make sure your Bravia speaker is connected via Bluetooth before activating.</p>
+
+    <div class="center">
+        <button id="btn" onclick="activate()">ACTIVATE<br>SANDSTORM</button>
+        <div id="status">🚨 Sandstorm activated</div>
+    </div>
+
+    <audio id="audio" src="sandstorm.mp3" preload="auto"></audio>
+
+    <script>
+        const GOVEE_KEY      = 'c3dc74a7-60b0-42d0-87ef-d655f05af51b';
+        const GOVEE_ENDPOINT = 'https://developer-api.govee.com/v1/devices/control';
+
+        const DEVICES = [
+            { device: 'D0:C9:07:E5:FF:F8', model: 'H6006' },
+            { device: '5C:E7:53:48:57:B4', model: 'H6006' },
+            { device: 'D0:C9:07:E8:4D:48', model: 'H6006' },
+        ];
+
+        function activate() {
+            playAudio();
+            triggerLights();
+            document.getElementById('status').classList.add('show');
+        }
+
+        function playAudio() {
+            const audio = document.getElementById('audio');
+            audio.currentTime = 0;
+            audio.play().catch(err => console.error('Audio playback error:', err));
+        }
+
+        function triggerLights() {
+            DEVICES.forEach(({ device, model }) => {
+                fetch(GOVEE_ENDPOINT, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Govee-API-Key': GOVEE_KEY,
+                    },
+                    body: JSON.stringify({
+                        device,
+                        model,
+                        cmd: { name: 'scene', value: 'Police' },
+                    }),
+                })
+                .then(res => console.log(`Govee [${device}]: HTTP ${res.status}`))
+                .catch(err => console.error(`Govee [${device}] failed — likely a CORS block:`, err));
+            });
+        }
+    </script>
+
+</body>
+</html>
