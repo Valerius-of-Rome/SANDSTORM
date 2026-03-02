@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Sandstorm">
+    <link rel="manifest" href="manifest.json">
+    <title>SandstormApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .notice {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 24px 32px 0;
+            padding-top: calc(24px + env(safe-area-inset-top));
+        }
+
+        .speaker-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 16px;
+            padding: 0 32px;
+        }
+
+        .speaker-row label {
+            font-size: 13px;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        .speaker-row select {
+            flex: 1;
+            background: #111;
+            color: #ccc;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-family: inherit;
+            max-width: 260px;
+            cursor: pointer;
+        }
+
+        .center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 36px;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        #btn {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            border: none;
+            background: radial-gradient(circle at center, #ff2a10 0%, #8b0000 100%);
+            box-shadow: 0 0 40px rgba(255, 40, 10, 0.45);
+            color: #fff;
+            font-size: 26px;
+            font-weight: 900;
+            font-family: inherit;
+            letter-spacing: 1px;
+            line-height: 1.25;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        #btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 64px rgba(255, 40, 10, 0.7);
+        }
+
+        #deactivate-btn {
+            width: 200px;
+            height: 56px;
+            border-radius: 28px;
+            border: 2px solid #5a0000;
+            background: #1a0000;
+            color: #cc4444;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: inherit;
+            letter-spacing: 1px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.1s ease, background 0.1s ease, opacity 0.25s ease;
+            opacity: 0.35;
+        }
+
+        #deactivate-btn.active {
+            opacity: 1;
+            border-color: #8b0000;
+            color: #ff6666;
+        }
+
+        #deactivate-btn:active {
+            transform: scale(0.95);
+            background: #2a0000;
+        }
+
+        #status {
+            font-size: 17px;
+            font-weight: 600;
+            color: #ff9500;
+            height: 28px;
+            opacity: 0;
+            transform: scale(0.85);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        #status.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body>
+
+    <p class="notice">Make sure your Bravia speaker is connected via Bluetooth before activating.</p>
+
+    <div class="speaker-row">
+        <label for="audio-output">🔊 Speaker:</label>
+        <select id="audio-output">
+            <option value="">Default output</option>
+        </select>
+    </div>
+
+    <div class="center">
+        <button id="btn" onclick="activate()">ACTIVATE<br>SANDSTORM</button>
+        <button id="deactivate-btn" onclick="deactivate()">DEACTIVATE</button>
+        <div id="status"></div>
+    </div>
+
+    <audio id="audio" src="sandstorm.mp3" preload="auto"></audio>
+
+    <script>
+        // Populate audio output device picker
+        async function loadAudioOutputs() {
+            if (!navigator.mediaDevices?.enumerateDevices) return;
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const outputs = devices.filter(d => d.kind === 'audiooutput');
+                const select = document.getElementById('audio-output');
+                outputs.forEach((device, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = device.deviceId;
+                    opt.textContent = device.label || `Output ${i + 1}`;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                console.warn('Could not enumerate audio devices:', e);
+            }
+        }
+
+        loadAudioOutputs();
+
+        function setStatus(text) {
+            const el = document.getElementById('status');
+            el.textContent = text;
+            el.classList.add('show');
+        }
+
+        async function activate() {
+            const audio = document.getElementById('audio');
+            const sinkId = document.getElementById('audio-output').value;
+
+            if (sinkId && typeof audio.setSinkId === 'function') {
+                try { await audio.setSinkId(sinkId); } catch (e) { console.warn('setSinkId failed:', e); }
+            }
+
+            audio.currentTime = 0;
+            audio.play().catch(err => console.error('Audio playback error:', err));
+
+            window.location.href = 'shortcuts://run-shortcut?name=Police';
+
+            setStatus('🚨 Sandstorm activated');
+            document.getElementById('deactivate-btn').classList.add('active');
+        }
+
+        function deactivate() {
+            const audio = document.getElementById('audio');
+            audio.pause();
+            audio.currentTime = 0;
+
+            window.location.href = 'shortcuts://run-shortcut?name=Normal%20lights';
+
+            setStatus('Sandstorm deactivated');
+            document.getElementById('deactivate-btn').classList.remove('active');
+        }
+
+</script>
+
+</body>
+</html>
